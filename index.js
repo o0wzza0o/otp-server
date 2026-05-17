@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const qrcode = require("qrcode-terminal");
@@ -15,30 +14,21 @@ app.use(express.json());
 
 const otpStore = {};
 
+
 const client = new Client({
   authStrategy: new LocalAuth(),
 
   puppeteer: {
     headless: true,
     executablePath:
-      process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      process.env.PUPPETEER_EXECUTABLE_PATH,
 
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--no-first-run",
-      "--no-zygote",
-      "--single-process",
       "--disable-gpu"
     ]
-  },
-
-  webVersionCache: {
-    type: "remote",
-    remotePath:
-      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
   }
 });
 
@@ -47,64 +37,32 @@ client.on("qr", qr => {
   qrcode.generate(qr, { small: true });
 });
 
-client.on("authenticated", () => {
-  console.log("WhatsApp Authenticated!");
-});
+
 
 client.on("ready", () => {
   console.log("WhatsApp Ready!");
 });
 
-client.on("auth_failure", msg => {
-  console.log("Auth Failure:", msg);
-});
-
-client.on("disconnected", reason => {
-  console.log("WhatsApp Disconnected:", reason);
-});
-
 client.initialize();
-
-app.get("/", (req, res) => {
-  res.send("OTP Server Working 🔥");
-});
 
 app.post("/send-otp", async (req, res) => {
   try {
     const { phone } = req.body;
 
-    if (!phone) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone number required"
-      });
-    }
-
+    // Strip any non-digit characters (like '+') from the phone number
     let formattedPhone = phone.replace(/\D/g, '');
 
-    if (
-      formattedPhone.startsWith('01') &&
-      formattedPhone.length === 11
-    ) {
-      formattedPhone =
-        '20' + formattedPhone.substring(1);
+    // Automatically format Egyptian numbers missing the country code
+    if (formattedPhone.startsWith('01') && formattedPhone.length === 11) {
+      formattedPhone = '20' + formattedPhone.substring(1);
     }
 
-    const whatsappId =
-      `${formattedPhone}@c.us`;
+    console.log(`[DEBUG] Attempting to send OTP to WhatsApp ID: ${formattedPhone}@c.us`);
 
-    console.log(
-      `[DEBUG] Sending OTP to ${whatsappId}`
-    );
-
-    const isRegistered =
-      await client.isRegisteredUser(whatsappId);
-
-    if (!isRegistered) {
+    if (!formattedPhone) {
       return res.status(400).json({
         success: false,
-        message:
-          "Phone number is not registered on WhatsApp."
+        message: "Invalid phone number."
       });
     }
 
@@ -114,74 +72,76 @@ app.post("/send-otp", async (req, res) => {
 
     otpStore[formattedPhone] = otp;
 
+    let isRegistered = false;
+    try {
+      // isRegisteredUser requires the full ID with @c.us
+      isRegistered = await client.isRegisteredUser(`${formattedPhone}@c.us`);
+    } catch (error) {
+      console.log("Validation error (t: t):", error.message);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number format or unsupported number."
+      });
+    }
+
+    if (!isRegistered) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is not registered on WhatsApp."
+      });
+    }
+
     await client.sendMessage(
-      whatsappId,
+      `${formattedPhone}@c.us`,
       `Your OTP code is: ${otp}`
     );
 
     res.json({
       success: true,
-      message: "OTP sent successfully"
+      otp
     });
 
   } catch (err) {
+    console.log(err);
 
-    console.log("SEND OTP ERROR:", err);
-
-    res.status(500).json({
-      success: false,
-      error: err.message
+    res.json({
+      success: false
     });
   }
 });
 
 app.post("/verify-otp", (req, res) => {
+  const { phone, otp } = req.body;
 
-  try {
+  let formattedPhone = phone.replace(/\D/g, '');
 
-    const { phone, otp } = req.body;
+  if (formattedPhone.startsWith('01') && formattedPhone.length === 11) {
+    formattedPhone = '20' + formattedPhone.substring(1);
+  }
 
-    let formattedPhone =
-      phone.replace(/\D/g, '');
+  if (otpStore[formattedPhone] === otp) {
 
-    if (
-      formattedPhone.startsWith('01') &&
-      formattedPhone.length === 11
-    ) {
-      formattedPhone =
-        '20' + formattedPhone.substring(1);
-    }
+    delete otpStore[formattedPhone];
 
-    if (
-      otpStore[formattedPhone] === otp
-    ) {
-
-      delete otpStore[formattedPhone];
-
-      return res.json({
-        success: true,
-        message: "Login Success"
-      });
-    }
-
-    res.status(400).json({
-      success: false,
-      message: "Invalid OTP"
-    });
-
-  } catch (err) {
-
-    console.log("VERIFY OTP ERROR:", err);
-
-    res.status(500).json({
-      success: false,
-      error: err.message
+    return res.json({
+      success: true,
+      message: "Login Success"
     });
   }
+
+  res.json({
+    success: false,
+    message: "Invalid OTP"
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+
+app.get("/", (req, res) => {
+  res.send("Server Working");
 });
