@@ -1,4 +1,3 @@
-```dockerfile id="4jlwmt"
 FROM node:20
 
 RUN apt-get update && apt-get install -y \
@@ -41,4 +40,4 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 EXPOSE 8080
 
 CMD ["node", "index.js"]
-```
+
