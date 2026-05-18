@@ -57,6 +57,10 @@ client.on("disconnected", (reason) => {
   console.log("WhatsApp Disconnected:", reason);
 });
 
+client.on("message_ack", (msg, ack) => {
+  console.log("Message ACK:", ack);
+});
+
 client.initialize();
 
 app.get("/", (req, res) => {
@@ -116,38 +120,6 @@ app.post("/send-otp", async (req, res) => {
       `[DEBUG] Sending OTP to ${whatsappId}`
     );
 
-    let isRegistered = false;
-
-    try {
-
-      isRegistered =
-        await client.isRegisteredUser(
-          whatsappId
-        );
-
-    } catch (error) {
-
-      console.log(
-        "Validation Error:",
-        error.message
-      );
-
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid phone number format"
-      });
-    }
-
-    if (!isRegistered) {
-
-      return res.status(400).json({
-        success: false,
-        message:
-          "Phone number is not registered on WhatsApp."
-      });
-    }
-
     const otp = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
@@ -157,6 +129,10 @@ app.post("/send-otp", async (req, res) => {
     await client.sendMessage(
       whatsappId,
       `Your OTP code is: ${otp}`
+    );
+
+    console.log(
+      `[SUCCESS] OTP SENT TO ${whatsappId}`
     );
 
     res.json({
