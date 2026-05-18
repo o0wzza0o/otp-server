@@ -16,6 +16,10 @@ const otpStore = {};
 
 let latestQr = null;
 
+let isClientReady = false;
+
+let isInitializing = false;
+
 const client = new Client({
 
   authStrategy: new LocalAuth(),
@@ -40,6 +44,39 @@ const client = new Client({
   }
 });
 
+async function initializeWhatsApp() {
+
+  if (
+    isInitializing ||
+    isClientReady
+  ) {
+    return;
+  }
+
+  try {
+
+    isInitializing = true;
+
+    console.log(
+      "Initializing WhatsApp..."
+    );
+
+    await client.initialize();
+
+  } catch (e) {
+
+    console.log(
+      "Initialize Error:"
+    );
+
+    console.log(e);
+
+  } finally {
+
+    isInitializing = false;
+  }
+}
+
 client.on("qr", async (qr) => {
 
   console.log("QR Generated!");
@@ -49,26 +86,67 @@ client.on("qr", async (qr) => {
 });
 
 client.on("ready", () => {
+
+  isClientReady = true;
+
   console.log("WhatsApp Ready!");
 });
 
 client.on("authenticated", () => {
-  console.log("WhatsApp Authenticated!");
+
+  console.log(
+    "WhatsApp Authenticated!"
+  );
 });
 
 client.on("auth_failure", (msg) => {
-  console.log("Auth Failure:", msg);
+
+  isClientReady = false;
+
+  console.log(
+    "Auth Failure:",
+    msg
+  );
 });
 
 client.on("disconnected", (reason) => {
-  console.log("WhatsApp Disconnected:", reason);
+
+  isClientReady = false;
+
+  console.log(
+    "WhatsApp Disconnected:",
+    reason
+  );
 });
 
 client.on("message_ack", (msg, ack) => {
-  console.log("Message ACK:", ack);
+
+  console.log(
+    "Message ACK:",
+    ack
+  );
 });
 
-client.initialize();
+initializeWhatsApp();
+
+setInterval(async () => {
+
+  try {
+
+    await client.getState();
+
+  } catch (e) {
+
+    console.log(
+      "Reinitializing client..."
+    );
+
+    isClientReady = false;
+
+    initializeWhatsApp();
+  }
+
+}, 30000);
 
 app.get("/", (req, res) => {
 
@@ -96,7 +174,15 @@ app.get("/qr", (req, res) => {
         margin:0;
       ">
 
-        <img src="${latestQr}" />
+        <img
+          src="${latestQr}"
+          style="
+            width:350px;
+            background:white;
+            padding:20px;
+            border-radius:20px;
+          "
+        />
 
       </body>
 
@@ -110,6 +196,19 @@ app.post(
   async (req, res) => {
 
     try {
+
+      if (!isClientReady) {
+
+        return res
+          .status(503)
+          .json({
+
+            success: false,
+
+            message:
+              "WhatsApp client is not ready yet"
+          });
+      }
 
       const { phone } = req.body;
 
@@ -131,13 +230,13 @@ app.post(
 
       if (
         formattedPhone.startsWith(
-          '01'
+          "01"
         ) &&
         formattedPhone.length === 11
       ) {
 
         formattedPhone =
-          '20' +
+          "20" +
           formattedPhone.substring(1);
       }
 
@@ -153,8 +252,9 @@ app.post(
         Math.random() * 900000
       ).toString();
 
-      otpStore[formattedPhone] =
-        otp;
+      otpStore[
+        formattedPhone
+      ] = otp;
 
       const sendResult =
         await Promise.race([
@@ -164,18 +264,19 @@ app.post(
             `Your OTP code is: ${otp}`
           ),
 
-          new Promise((_, reject) =>
+          new Promise(
+            (_, reject) =>
 
-            setTimeout(() =>
+              setTimeout(() =>
 
-              reject(
-                new Error(
-                  "Send timeout"
-                )
-              ),
+                reject(
+                  new Error(
+                    "Send timeout"
+                  )
+                ),
 
-              90000
-            )
+                90000
+              )
           )
         ]);
 
@@ -201,6 +302,8 @@ app.post(
 
       console.log(err);
 
+      isClientReady = false;
+
       return res
         .status(500)
         .json({
@@ -223,18 +326,31 @@ app.post(
       const { phone, otp } =
         req.body;
 
+      if (!phone || !otp) {
+
+        return res
+          .status(400)
+          .json({
+
+            success: false,
+
+            message:
+              "Phone and OTP required"
+          });
+      }
+
       let formattedPhone =
         phone.replace(/\D/g, '');
 
       if (
         formattedPhone.startsWith(
-          '01'
+          "01"
         ) &&
         formattedPhone.length === 11
       ) {
 
         formattedPhone =
-          '20' +
+          "20" +
           formattedPhone.substring(1);
       }
 
