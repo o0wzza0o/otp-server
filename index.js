@@ -271,28 +271,10 @@ app.post(
       ] = otp;
 
       const sendResult =
-        await Promise.race([
-
-          client.sendMessage(
-            whatsappId,
-            `Your OTP code is: ${otp}`
-          ),
-
-          new Promise(
-            (_, reject) =>
-
-              setTimeout(() =>
-
-                reject(
-                  new Error(
-                    "Send timeout"
-                  )
-                ),
-
-                90000
-              )
-          )
-        ]);
+        await client.sendMessage(
+          whatsappId,
+          `Your OTP code is: ${otp}`
+        );
 
       console.log(
         `[SUCCESS] OTP SENT TO ${whatsappId}`
@@ -315,8 +297,6 @@ app.post(
       );
 
       console.log(err);
-
-      isClientReady = false;
 
       return res
         .status(500)
