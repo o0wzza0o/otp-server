@@ -47,4 +47,6 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 EXPOSE 10000
 
+RUN mkdir -p /app/sessions
+
 CMD ["node", "index.js"]
