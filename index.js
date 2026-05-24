@@ -135,11 +135,6 @@ client.on("message_ack", (msg, ack) => {
   );
 });
 
-setTimeout(() => {
-
-  initializeWhatsApp();
-
-}, 10000);
 setInterval(async () => {
 
   try {
