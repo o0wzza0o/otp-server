@@ -26,12 +26,14 @@ const client = new Client({
 
   puppeteer: {
 
-    headless: "new",
+    headless: true,
 
     executablePath:
       process.env.PUPPETEER_EXECUTABLE_PATH,
 
     protocolTimeout: 120000,
+
+    ignoreHTTPSErrors: true,
 
     args: [
       "--no-sandbox",
@@ -39,7 +41,13 @@ const client = new Client({
       "--disable-dev-shm-usage",
       "--disable-gpu",
       "--single-process",
-      "--no-zygote"
+      "--no-zygote",
+      "--disable-extensions",
+      "--disable-background-networking",
+      "--disable-background-timer-throttling",
+      "--disable-renderer-backgrounding",
+      "--disable-features=site-per-process",
+      "--disable-web-security"
     ]
   }
 });
@@ -127,8 +135,11 @@ client.on("message_ack", (msg, ack) => {
   );
 });
 
-initializeWhatsApp();
+setTimeout(() => {
 
+  initializeWhatsApp();
+
+}, 10000);
 setInterval(async () => {
 
   try {
@@ -417,5 +428,11 @@ app.listen(
     console.log(
       `Server running on port ${PORT}`
     );
+
+    setTimeout(() => {
+
+      initializeWhatsApp();
+
+    }, 10000);
   }
 );
