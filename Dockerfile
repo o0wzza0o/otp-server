@@ -1,7 +1,10 @@
-FROM node:20
+FROM node:20-slim
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 RUN apt-get update && apt-get install -y \
     chromium \
+    chromium-sandbox \
     libglib2.0-0 \
     libnss3 \
     libatk1.0-0 \
@@ -25,7 +28,12 @@ RUN apt-get update && apt-get install -y \
     libxcursor1 \
     libxi6 \
     libxtst6 \
-    wget
+    fonts-liberation \
+    xdg-utils \
+    wget \
+    ca-certificates \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -37,7 +45,6 @@ COPY . .
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-EXPOSE 8080
+EXPOSE 10000
 
 CMD ["node", "index.js"]
-
