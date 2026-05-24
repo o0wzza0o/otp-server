@@ -22,7 +22,13 @@ let isInitializing = false;
 
 const client = new Client({
 
-  authStrategy: new LocalAuth(),
+  authStrategy: new LocalAuth({
+
+    clientId: "otp-server-session",
+
+    dataPath: "./sessions"
+
+  }),
 
   puppeteer: {
 
@@ -35,22 +41,22 @@ const client = new Client({
 
     ignoreHTTPSErrors: true,
 
-   args: [
-  "--no-sandbox",
-  "--disable-setuid-sandbox",
-  "--disable-dev-shm-usage",
-  "--disable-gpu",
-  "--single-process",
-  "--no-zygote",
-  "--disable-extensions",
-  "--disable-background-networking",
-  "--disable-background-timer-throttling",
-  "--disable-renderer-backgrounding",
-  "--disable-features=site-per-process",
-  "--disable-web-security",
-  "--disable-blink-features=AutomationControlled",
-  "--disable-infobars"
-]
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--single-process",
+      "--no-zygote",
+      "--disable-extensions",
+      "--disable-background-networking",
+      "--disable-background-timer-throttling",
+      "--disable-renderer-backgrounding",
+      "--disable-features=site-per-process",
+      "--disable-web-security",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-infobars"
+    ]
   }
 });
 
